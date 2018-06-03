@@ -1,124 +1,110 @@
-pkg_name=perl
+pkg_name=perl510
 pkg_origin=qubitrenegade
-pkg_version=5.10.1 
-pkg_maintainer="The Habitat Maintainers <humans@habitat.sh>"
-pkg_license=('gpl' 'perlartistic')
-pkg_source=http://www.cpan.org/src/5.0/${pkg_name}-${pkg_version}.tar.bz2
-pkg_shasum=9385f2c8c2ca8b1dc4a7c31903f1f8dc8f2ba867dc2a9e5c93012ed6b564e826
-pkg_deps=(core/glibc core/zlib core/bzip2 core/gdbm core/db core/coreutils core/less)
-pkg_build_deps=(core/coreutils core/diffutils core/patch core/make qubitrenegade/gcc494 core/procps-ng core/inetutils core/iana-etc)
-pkg_bin_dirs=(bin)
+pkg_version="5.10.1"
+pkg_maintainer="QubitRenegade <qubitrenegad@gmail.com>"
+pkg_license=("MPL-2.0")
+pkg_deps=(core/glibc)
+pkg_build_deps=(core/make core/gcc qubitrenegade/perlbrew )
 pkg_lib_dirs=(lib)
-pkg_interpreters=(bin/perl)
+pkg_include_dirs=(include)
+pkg_bin_dirs=(bin)
 
-do_prepare() {
-  do_default_prepare
+# Optional.
+# An array of paths, relative to the final install of the software, where
+# pkg-config metadata (.pc files) can be found. Used to populate
+# PKG_CONFIG_PATH for software that depends on your package.
+# pkg_pconfig_dirs=(lib/pconfig)
 
-  # Do not look under `/usr` for dependencies.
-  #
-  # Thanks to: https://github.com/NixOS/nixpkgs/blob/release-15.09/pkgs/development/interpreters/perl/5.22/no-sys-dirs.patch
-  # patch -p1 -i $PLAN_CONTEXT/no-sys-dirs.patch
+# Optional.
+# An array of interpreters used in shebang lines for scripts. Specify the
+# subdirectory where the binary is relative to the package, for example,
+# bin/bash or libexec/neverland, since binaries can be located in directories
+# besides bin. This list of interpreters will be written to the metadata
+# INTERPRETERS file, located inside a package, with their fully-qualified path.
+# Then these can be used with the fix_interpreter function.
+# pkg_interpreters=(bin/bash)
 
-  # Skip the only failing test in the suite--not bad, eh?
-  # patch -p1 -i $PLAN_CONTEXT/skip-wide-character-test.patch
 
-  #  Make Cwd work with the `pwd` command from `coreutils` (we cannot rely
-  #  on `/bin/pwd` exisiting in an environment)
-  # sed -i "s,'/bin/pwd','$(pkg_path_for coreutils)/bin/pwd',g" \
-  #   dist/PathTools/Cwd.pm
+pkg_description="Perl installation using Perlbrew to download, compile, and install..."
+pkg_upstream_url="http://perl.org"
 
-  # Build the `-Dlocincpth` configure flag, which is collection of all
-  # directories containing headers. As the `$CFLAGS` environment variable has
-  # this list, we will raid it, looking for tokens starting with `-I/`.
-  locincpth=""
-  for i in $CFLAGS; do
-    if echo "$i" | grep -q "^-I\/" > /dev/null; then
-      locincpth="$locincpth $(echo "$i" | sed 's,^-I,,')"
-    fi
-  done
 
-  # Build the `-Dloclibpth` configure flag, which is collection of all
-  # directories containing shared libraries. As the `$LDFLAGS` environment
-  # variable has this list, we will raid it, looking for tokens starting with
-  # `-L/`.
-  loclibpth=""
-  for i in $LDFLAGS; do
-    if echo "$i" | grep -q "^-L\/" > /dev/null; then
-      loclibpth="$loclibpth $(echo "$i" | sed 's,^-L,,')"
-    fi
-  done
+# Callback Functions
+#
+# When defining your plan, you have the flexibility to override the default
+# behavior of Habitat in each part of the package building stage through a
+# series of callbacks. To define a callback, simply create a shell function
+# of the same name in your plan.sh file and then write your script. If you do
+# not want to use the default callback behavior, you must override the callback
+# and return 0 in the function definition.
+#
+# Callbacks are defined here with either their "do_default_x", if they have a
+# default implementation, or empty with "return 0" if they have no default
+# implementation (Bash does not allow empty function bodies.) If callbacks do
+# nothing or do the same as the default implementation, they can be removed from
+# this template.
+#
+# The default implementations (the do_default_* functions) are defined in the
+# plan build script:
+# https://github.com/habitat-sh/habitat/tree/master/components/plan-build/bin/hab-plan-build.sh
 
-  # When building a shared `libperl`, the `$LD_LIBRARY_PATH` environment
-  # variable is used for shared library lookup. This maps pretty exactly to the
-  # collections of paths already in `$LD_RUN_PATH` with the exception of the
-  # build directory, which will contain the build shared Perl library.
-  #
-  # Thanks to: http://perl5.git.perl.org/perl.git/blob/c52cb8175c7c08890821789b4c7177b1e0e92558:/INSTALL#l478
-  export LD_LIBRARY_PATH="`pwd`:$LD_RUN_PATH"
-  build_line "Setting LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+do_download() {
+  do_default_download
+}
+
+do_verify() {
+  do_default_verify
+}
+
+do_clean() {
+  do_default_clean
+}
+
+do_unpack() {
+  do_default_unpack
 }
 
 do_build() {
-  # Use the already-built shared libraries for zlib and bzip2 modules
-  export BUILD_ZLIB=False
-  export BUILD_BZIP2=0
-
-  sh Configure \
-    -de \
-    -Dprefix=$pkg_prefix \
-    -Dman1dir=$pkg_prefix/share/man/man1 \
-    -Dman3dir=$pkg_prefix/share/man/man3 \
-    -Dlocincpth="$locincpth" \
-    -Dloclibpth="$loclibpth" \
-    -Dpager="$(pkg_path_for less)/bin/less -isR" \
-    -Dinstallstyle=lib/perl5 \
-    -Uinstallusrbinperl \
-    -Duseshrplib \
-    -Dusethreads \
-    -Dinc_version_list=none \
-    -Dlddlflags="-shared ${LDFLAGS}" \
-    -Dldflags="${LDFLAGS}"
-  sed -i 's/die "No error definitions found" unless keys %err;/# die "No error definitions found" unless keys %err;/g' ext/Errno/Errno_pm.PL
-  attach
-  make -j$(nproc)
-
-  # Clear temporary build time environment variables
-  unset BUILD_ZLIB BUILD_BZIP2
+  return 0
+  do_default_build
 }
 
+# The default implementation runs nothing during post-compile. An example of a
+# command you might use in this callback is make test. To use this callback, two
+# conditions must be true. A) do_check() function has been declared, B) DO_CHECK
+# environment variable exists and set to true, env DO_CHECK=true.
 do_check() {
-  # If `/etc/services` and/or `/etc/protocols` does not exist, make temporary
-  # versions from the `iana-etc` package. This is needed for several
-  # network-related tests to pass.
-  if [[ ! -f /etc/services ]]; then
-    cp -v $(pkg_path_for iana-etc)/etc/services /etc/services
-    local clean_services=true
-  fi
-  if [[ ! -f /etc/protocols ]]; then
-    cp -v $(pkg_path_for iana-etc)/etc/protocols /etc/protocols
-    local clean_protocols=true
-  fi
-
-  make test
-
-  # If the `/etc/services` or `/etc/protocols` files were added for the
-  # purposes of this test suite, clean them up. Otherwise leave them be.
-  if [[ -n "$clean_services" ]]; then
-    rm -fv /etc/services
-  fi
-  if [[ -n "$clean_protocols" ]]; then
-    rm -fv /etc/protocols
-  fi
+  return 0
 }
 
+# The default implementation is to run make install on the source files and
+# place the compiled binaries or libraries in HAB_CACHE_SRC_PATH/$pkg_dirname,
+# which resolves to a path like /hab/cache/src/packagename-version/. It uses
+# this location because of do_build() using the --prefix option when calling the
+# configure script. You should override this behavior if you need to perform
+# custom installation steps, such as copying files from HAB_CACHE_SRC_PATH to
+# specific directories in your package, or installing pre-built binaries into
+# your package.
+do_install() {
+  PERLBREW_HOME=${HAB_CACHE_SRC_PATH}
+  PERLBREW_ROOT=${pkg_prefix}
+  attach
+  perlbrew install  perl-5.10.1  
+}
 
-# ----------------------------------------------------------------------------
-# **NOTICE:** What follows are implementation details required for building a
-# first-pass, "stage1" toolchain and environment. It is only used when running
-# in a "stage1" Studio and can be safely ignored by almost everyone. Having
-# said that, it performs a vital bootstrapping process and cannot be removed or
-# significantly altered. Thank you!
-# ----------------------------------------------------------------------------
-if [[ "$STUDIO_TYPE" = "stage1" ]]; then
-  pkg_build_deps=(core/gcc core/procps-ng core/inetutils core/iana-etc)
-fi
+# The default implementation is to strip any binaries in $pkg_prefix of their
+# debugging symbols. You should override this behavior if you want to change
+# how the binaries are stripped, which additional binaries located in
+# subdirectories might also need to be stripped, or whether you do not want the
+# binaries stripped at all.
+do_strip() {
+  do_default_strip
+}
+
+# There is no default implementation of this callback. This is called after the
+# package has been built and installed. You can use this callback to remove any
+# temporary files or perform other post-install clean-up actions.
+do_end() {
+  return 0
+}
+
