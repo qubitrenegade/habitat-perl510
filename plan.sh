@@ -6,7 +6,7 @@ pkg_license=('gpl' 'perlartistic')
 pkg_source=http://www.cpan.org/src/5.0/${pkg_name}-${pkg_version}.tar.bz2
 pkg_shasum=9385f2c8c2ca8b1dc4a7c31903f1f8dc8f2ba867dc2a9e5c93012ed6b564e826
 pkg_deps=(core/glibc core/zlib core/bzip2 core/gdbm core/db core/coreutils core/less)
-pkg_build_deps=(core/coreutils core/diffutils core/patch core/make qubitrenegade/gcc494 core/procps-ng core/inetutils core/iana-etc)
+pkg_build_deps=(core/coreutils core/diffutils core/patch core/make qubitrenegade/gcc/4.9.4 core/procps-ng core/inetutils core/iana-etc)
 pkg_bin_dirs=(bin)
 pkg_lib_dirs=(lib)
 pkg_interpreters=(bin/perl)
@@ -79,6 +79,8 @@ do_build() {
     -Dlddlflags="-shared ${LDFLAGS}" \
     -Dldflags="${LDFLAGS}"
   sed -i 's/die "No error definitions found" unless keys %err;/# die "No error definitions found" unless keys %err;/g' ext/Errno/Errno_pm.PL
+  # sed -i 's/ //g' lib/ExtUtils/MakeMaker.pm
+
   attach
   make -j$(nproc)
 
