@@ -3,8 +3,28 @@ pkg_origin=qubitrenegade
 pkg_version="5.10.1"
 pkg_maintainer="QubitRenegade <qubitrenegad@gmail.com>"
 pkg_license=("MPL-2.0")
-pkg_deps=(core/glibc)
-pkg_build_deps=(core/make core/gcc qubitrenegade/perlbrew )
+pkg_deps=(
+  core/glibc
+  core/zlib
+  core/bzip2
+  core/gdbm
+  core/db
+  core/coreutils
+  core/less
+)
+pkg_build_deps=(
+  core/coreutils
+  core/diffutils
+  core/patch
+  core/make
+  core/gcc
+  core/procps-ng
+  core/inetutils
+  core/iana-etc
+  qubitrenegade/perlbrew
+)
+# pkg_deps=(core/glibc)
+# pkg_build_deps=(core/make core/gcc qubitrenegade/perlbrew )
 pkg_lib_dirs=(lib)
 pkg_include_dirs=(include)
 pkg_bin_dirs=(bin)
@@ -86,8 +106,12 @@ do_check() {
 # specific directories in your package, or installing pre-built binaries into
 # your package.
 do_install() {
-  PERLBREW_HOME=${HAB_CACHE_SRC_PATH}
-  PERLBREW_ROOT=${pkg_prefix}
+  export PERLBREW_HOME=${HAB_CACHE_SRC_PATH}
+  export PERLBREW_ROOT=${pkg_prefix}
+  perlbrew init
+  source ${PERLBREW_ROOT}/etc/bashrc
+  perlbrew install-patchperl
+  hab pkg binlink core/coreutils
   attach
   perlbrew install  perl-5.10.1  
 }
