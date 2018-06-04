@@ -81,7 +81,6 @@ do_build() {
   sed -i 's/die "No error definitions found" unless keys %err;/# die "No error definitions found" unless keys %err;/g' ext/Errno/Errno_pm.PL
   # sed -i 's/ //g' lib/ExtUtils/MakeMaker.pm
 
-  attach
   make -j$(nproc)
 
   # Clear temporary build time environment variables
